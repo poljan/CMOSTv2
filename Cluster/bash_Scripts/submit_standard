@@ -1,0 +1,53 @@
+#! /bin/sh
+# program created by Benjamin Misselwitz
+ 
+# sleep 50
+OutputDir="/cluster/home/misselwb/Data/"
+AccountingFileSubmitted="/EulerAccounting.txt"
+AccountingFileFinished="/EulerFinished.txt"
+
+JobOutput="/cluster/home/misselwb/JobOutput"
+
+echo "we are here"
+
+for foldername1 in $(ls ${OutputDir}); do
+	echo ${foldername1}
+	if test -d ${OutputDir}/${foldername1}; then	
+				
+#		FileSubmitted=${OutputDir}/${foldername1}/${AccountingFileSubmitted}
+#		if ! test -r $FileSubmitted; then
+#			touch $FileSubmitted
+#		fi
+
+#		FileFinished=${OutputDir}/${foldername1}/${AccountingFileFinished}
+		 		
+#		if ! test -r $FileFinished; then
+#			touch $FileFinished
+#		fi
+		
+		for FileName in $(ls ${OutputDir}/${foldername1} | grep -e ".mat$" | grep -v "Results.mat"); do 
+#			sleep 0.2
+			MessageFinished=${FileName}"_is_finished"
+			MessageSubmitted=${FileName}"_is_submitted" 
+			Directory=${OutputDir}/${foldername1}	
+			let pos=${#FileName}-4
+			tmp=${FileName:0:$pos}
+			ResultsFile=${tmp}"_Results.mat"				       
+			# echo ${ResultsFile}
+			if test -e ${OutputDir}/${foldername1}/${ResultsFile}; then
+				echo ${FileName} " this job has already been submitted"
+			else
+				echo "submitting job !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+				
+				let pos=${#FileName}-4
+				JobOutputName=$JobOutput/${FileName:0:$pos}.txt
+				bsub -W 08:00 -r -o $JobOutputName $HOME/CMOSTClusterSub ${Directory}/${FileName} ${FileFinished} ${MessageFinished}
+			#	sleep 0.15
+#							echo $MessageSubmitted>>$FileSubmitted
+			fi
+		done
+	fi	
+done
+
+exit 0
+

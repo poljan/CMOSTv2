@@ -1,0 +1,29 @@
+#! /bin/sh
+# program created by Benjamin Misselwitz
+AccountingFile=$2
+FileAccounting=$3
+OutPutName=${1:0:$(expr length ${1:4})}_Results.mat
+
+echo "starting polyp calculation"
+LASTPID=$!
+#LASTPID=1
+echo $LASTPID
+
+echo "Filename is       " $1
+echo "Accounting File is" $2
+echo "Output File is    " ${OutPutName}
+date
+
+matlab -nojvm -r "CMOSTCluster('$1')"
+#matlab -r "PCCluster('$1')"
+
+echo "analysis is finished"
+date
+if [ -r ${OutPutName} ]; then
+	echo "everything okay, Output file detected"
+else 	echo "Error, no Outputfile"
+	exit 1
+fi
+#echo ""${FileAccounting}>>${AccountingFile}
+echo "exiting"
+date
