@@ -288,7 +288,7 @@ for f=1:length(ScreeningHandles)
 end
 for f=1:length(ScreeningHandles)
     if handles.Variables.Screening.(ScreeningHandles{f})(1) > 0
-        Ende = round(handles.Variables.Screening.(ScreeningHandles{f})(1) * 1000);
+        Ende = Start + round(handles.Variables.Screening.(ScreeningHandles{f})(1) * 1000);
         ScreeningMatrix(Start:Ende) = f;
         Start = Ende + 1;
     end
