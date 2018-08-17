@@ -15,10 +15,10 @@ disp(['Simulated population size: ' int2str(NAlive)]);
 SubjectIDs = uint32(1:NAlive)'; %this will hold actual indices to the output vector
 NumIndividualsToSimulate = NAlive;
 
-PBP_Doc.Early     = ones(1, NAlive)*-1; % number early adenomas
-PBP_Doc.Advanced  = ones(1, NAlive)*-1; % number advanced adenomas
-PBP_Doc.Cancer    = ones(1, NAlive)*-1; % number cancer
-PBP_Doc.Screening = zeros(1, NAlive);   % screening done?
+PBP_Doc.Early     = int16(ones(1, NAlive)*-1); % number early adenomas
+PBP_Doc.Advanced  = int16(ones(1, NAlive)*-1); % number advanced adenomas
+PBP_Doc.Cancer    = int16(ones(1, NAlive)*-1); % number cancer
+PBP_Doc.Screening = false(1, NAlive);   % screening done?
 
 %substitute of Included
 SubjectsIDWouldBeAlive = uint32([]);
@@ -276,6 +276,7 @@ tmp = false(NAlive,yearsToSimulate);
 YearIncluded = tmp;
 YearAlive    = tmp;
 
+PBP.Year = uint8(PBP.Year);
 
 %% MAIN SIMULATION LOOP
 stepCounter = uint16(0); %
@@ -794,6 +795,26 @@ while and(NAlive > 0 || ~isempty(GenderWouldBeAlive), stepCounter < yearsToSimul
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         if flag.SpecialFlag
+            
+            if flag.PBP % the special scenario with poor bowel preparation
+                if currentYear == PBP.Year
+                    cond1 = dcurrentYear-Last.Colonoscopy(SubjectIDs) >= 10;
+                    if any(cond1)
+                        if isequal(PBP.Mock, 1)
+                            % mock mode, nothing will be changed by
+                            % this colonoscopy
+                            
+                            
+                        else
+                            
+                        end
+                    end
+                end
+                if PBP.RepeatYear > -1 % if repeat year not xx (i.e. not planned)
+                    
+                end
+            end
+            
             if flag.Kolo1
                 if dcurrentYear == ScreeningTest(1, 4)
                     Number.Screening_Colonoscopy(currentYear) = Number.Screening_Colonoscopy(currentYear) + length(SubjectIDs);
@@ -1032,6 +1053,15 @@ Money.AllCostFuture = Money.FutureTreatment + Money.Screening + Money.FollowUp +
         Detected.CancerLocation       = Detected.CancerLocation(indx);
         Detected.MortTime             = Detected.MortTime(indx);
         Detected.SubjectID            = Detected.SubjectID(indx);
+    end
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%         COLONOSCOPY MOCK                           %%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    function Colonoscopy_Mock(SelectedSubjectID, Modus)
+        
+        
     end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
