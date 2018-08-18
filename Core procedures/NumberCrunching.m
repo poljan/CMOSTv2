@@ -1405,39 +1405,28 @@ Money.AllCostFuture = Money.FutureTreatment + Money.Screening + Money.FollowUp +
 
     function AddCosts(IDs,mode)
         
+        %logical variable indicated which of the detected cancers are to be
+        %considered in adding the cost
         cancersToAccount = ismember(Detected.SubjectID, IDs);
-        % in this case a cancer has been diagnosed and
-        % we need to take care of the costs
         
-        if any(cancersToAccount)
+        if any(cancersToAccount) %if there are cancers to be accounted for
             
-            SubCost       = zeros(1, yearsToSimulate*numPeriods);  % for temporary calculations
+            %variable for temporary calculations
+            SubCost       = zeros(1, yearsToSimulate*numPeriods);
             SubCostFut    = zeros(1, yearsToSimulate*numPeriods);
             
-            NcancersToAccount = sum(cancersToAccount);
-            Start = Detected.CancerYear(cancersToAccount); %this is the exact counter
-            IDsToAccount = Detected.SubjectID(cancersToAccount);
-            %Difference = stepCounter - Start; %how many intermediate intervals were there
+            NcancersToAccount = sum(cancersToAccount); %how many cancers to account fot
+            Start = Detected.CancerYear(cancersToAccount); %time when the cancer was detected
+            IDsToAccount = Detected.SubjectID(cancersToAccount); %IDs of patients
+            Stage = Detected.Cancer(cancersToAccount) - 6; %stage of the cancers that will be accounted for
             
-            Stage = Detected.Cancer(cancersToAccount) - 6;
-            %Year = idivide(Start,numPeriods)+1; %need to use idivide, because of interger division rounding
             
-            %case1 = Difference > 1 & Difference <= (numPeriods+1); %patient died within a year
-            %case2 = Difference > (numPeriods+1) & Difference <= (5*numPeriods); %patient died after more than a year and before 5 years
-            %case3 = Difference > (5*numPeriods); %patient died after 5 years since diagnosis
-            % all other tumors
-            %m for the costs, the following changes are made:
-            %m after 5 years, the treatment is discontinued
-            %m during the 5 years of treatment if the death is due to other
-            %reasons, these costs are not included
-            %m the initial phase is for 3 months, and the remaining time until the
-            %terminal or the 5th year are the continuing costs.
-            
-            for ii = 1:NcancersToAccount
+            for ii = 1:NcancersToAccount %go through each cancer
                 
                 %first: insert the continous costs from cancer diagnosis
-                %till death
-                range = Start(ii):stepCounter; %interval: from the moment of diagnosis to the current time
+                %till min(death moment, 5 years since diagnosis)
+                %stepCounter is the current moment, 5*numPeriods is 5 years
+                range = Start(ii):min(stepCounter, Start(ii)+5*numPeriods);
                 SubCost(range) = SubCost(range) + 1/4*CostStage.Cont(Stage(ii)); % CONT;
                 SubCostFut(range) = SubCostFut(range) + 1/4*CostStage.FutCont(Stage(ii)); % CONT;
                
@@ -1451,112 +1440,26 @@ Money.AllCostFuture = Money.FutureTreatment + Money.Screening + Money.FollowUp +
                 SubCost(range) = SubCost(range) + 1/4*CostStage.Initial(Stage(ii)); % CONT;
                 SubCostFut(range) = SubCostFut(range) + 1/4*CostStage.FutInitial(Stage(ii)); % CONT;
                 
-                %third: insert the final cost (overlap with continous and
-                %initial cost will be overwritten)
-                range = (stepCounter-(minRange-1)):stepCounter;
-                SubCost(range) = SubCost(range) + 1/4*CostStage.Final(Stage(ii)); % CONT;
-                SubCostFut(range) = SubCostFut(range) + 1/4*CostStage.FutFinal(Stage(ii)); % CONT;
                 
-                %if the patient died from other causes within the five
-                %years from diagnosis
-                if isequal(mode, 'oc') && stepCounter - Start(ii) < 5*numPeriods
-                    %NOT SURE WHAT TO DO HERE
+                %if the patient died within 5 years from diagnosis, there
+                %will be final costs
+                if stepCounter - Start(ii) <= 5*numPeriods
+                    
+                    if isequal(mode, 'oc') %if the patient died from other causes
+                        %I take into account another variable for the last 12
+                        %months, Final oc
+                        range = (stepCounter-(minRange-1)):stepCounter; %last year range
+                        SubCost(range) = SubCost(range) + 1/4*CostStage.Final_oc(Stage(ii)); % CONT;
+                        SubCostFut(range) = SubCostFut(range) + 1/4*CostStage.Final_oc(Stage(ii)); % CONT;
+                    else
+                        %third: insert the final cost (overlap with continous and
+                        %initial cost will be overwritten)
+                        range = (stepCounter-(minRange-1)):stepCounter; %last year range
+                        SubCost(range) = SubCost(range) + 1/4*CostStage.Final(Stage(ii)); % CONT;
+                        SubCostFut(range) = SubCostFut(range) + 1/4*CostStage.FutFinal(Stage(ii)); % CONT;
+                    end
                 end
                 
-                
-                
-                
-%                 % the costs for the first year of treatment apply, independent
-%                 % whether the patient survived a full year or not
-%                 %SubCost(Start(ii)) = SubCost(Start(ii)) + CostStage.Initial(Stage(ii));
-%                 %SubCostFut(Start(ii)) = SubCostFut(Start(ii)) + CostStage.FutInitial(Stage(ii));
-%                 PaymentType.Cancer_ini(Stage(ii), Year(ii)) = PaymentType.Cancer_ini(Stage(ii),Year(ii)) + 1;
-%                 PaymentType.QCancer_ini(Stage(ii), Year(ii),1)= PaymentType.QCancer_ini(Stage(ii), Year(ii),1) + 1;
-%                 
-%                 if case1(ii)
-%                     range = (Start(ii)+1) : stepCounter;
-%                     idxFin = idivide(stepCounter,numPeriods);
-%                     if ~isequal(mode, 'oc')
-%                         SubCost(range)    = SubCost(range) + 1/4* CostStage.Final(Stage(ii)); % START
-%                         SubCostFut(range) = SubCostFut(range) + 1/4* CostStage.FutFinal(Stage(ii)); % START
-%                         PaymentType.Cancer_fin(Stage(ii), idxFin)  = PaymentType.Cancer_fin(Stage(ii), idxFin) + (double(stepCounter)-double(Start(ii)))/4; %m2 ini is for q1, and the cont is for rest. but to keep it all integers, I use y
-%                         for Qcount=1:(stepCounter-Start(ii)-1)
-%                             PaymentType.QCancer_fin(Stage(ii), idxFin,Qcount)  = PaymentType.QCancer_fin(Stage(ii), idxFin,Qcount) + 1; %m2 this finQ is counting in quarters
-%                         end
-%                     elseif isequal(mode, 'oc')
-%                         SubCost(range)        =  SubCost(range) + 1/4* CostStage.Cont(Stage(ii)); % START
-%                         SubCostFut(range)     =  SubCostFut(range) + 1/4* CostStage.FutCont(Stage(ii)); % START
-%                         PaymentType.Cancer_con(Stage(ii), idxFin)  = PaymentType.Cancer_con(Stage(ii), idxFin) + double(stepCounter-Start(ii))/4; %m2 ini is for q1, and the cont is for rest. but to keep it all integers, I use y
-%                         for Qcount=1:(stepCounter-Start(ii)-1)
-%                             PaymentType.QCancer_con(Stage(ii), idxFin,Qcount)  = PaymentType.QCancer_con(Stage(ii), idxFin,Qcount) + 1; %m2 this finQ is counting in quarters
-%                         end
-%                     end
-%                 elseif case2(ii)
-%                     range = Start(ii)+1 : (stepCounter - numPeriods);
-%                     SubCost(range)     = SubCost(range) + 1/4*CostStage.Cont(Stage(ii)); % CONT
-%                     SubCostFut(range)     = SubCostFut(range) + 1/4*CostStage.FutCont(Stage(ii)); % CONT
-%                     
-%                     yyears = idivide(Difference(ii)-numPeriods - 1, numPeriods);
-%                     qquarters = double(mod(Difference(ii)-numPeriods - 1, numPeriods))/double(numPeriods);%(Difference(ii)-1.25) - floor(Difference-1.25);
-%                     
-%                     for con_y=1:yyears
-%                         PaymentType.Cancer_con(Stage(ii), Year(ii)+con_y) = PaymentType.Cancer_con(Stage(ii),Year(ii)+con_y) + 1;%((4*Ende-4*1)-(4*Start+1))/4;
-%                         for Qcount=(con_y*4-3):(con_y*4)
-%                             PaymentType.QCancer_con(Stage(ii), Year(ii)+con_y,Qcount) = PaymentType.QCancer_con(Stage(ii),Year(ii)+con_y,Qcount) + 1;%((4*Ende-4*1)-(4*Start+1))/4;
-%                         end
-%                     end
-%                     
-%                     con_y = double(con_y);
-%                     Y = double(Year(ii));
-%                     PaymentType.Cancer_con(Stage(ii), Y+con_y+1)= PaymentType.Cancer_con(Stage(ii), Y+con_y+1) + qquarters;
-%                     for Qcount=1:(4*qquarters)
-%                        PaymentType.QCancer_con(Stage(ii), Y+con_y+1,con_y*4+Qcount) = PaymentType.QCancer_con(Stage(ii), Y+con_y+1,con_y*4+Qcount) + 1;%((4*Ende-4*1)-(4*Start+1))/4;
-%                     end
-%                     
-%                     %m PaymentType.Cancer_con(Detected.Cancer(z, x1)-6, floor(Start)) = PaymentType.Cancer_con(Detected.Cancer(z, x1)-6,floor(Start)) + ((4*Ende-4*1)-(4*Start+1))/4;
-%                     idxFin = idivide(stepCounter,numPeriods);
-%                     range = (stepCounter - numPeriods + 1):stepCounter;
-%                     if ~isequal(mode, 'oc')
-%                         SubCost(range)         = SubCost(range) + 1/4* CostStage.Final(Stage(ii));
-%                         SubCostFut(range)      = SubCostFut(range) + 1/4* CostStage.FutFinal(Stage(ii));
-%                         PaymentType.Cancer_fin(Stage(ii), idxFin) = PaymentType.Cancer_fin(Stage(ii),idxFin) + 1;
-%                         for Qcount=1:4 %m here all 4 quarters of treatment are followed, unlike when difference<1.25 where only few quarters of final year are implemented
-%                             PaymentType.QCancer_fin(Stage(ii), idxFin,Qcount)  = PaymentType.QCancer_fin(Stage(ii), idxFin,Qcount) + 1; %m2 this finQ is counting in quarters
-%                         end
-%                     elseif isequal(mode, 'oc')
-%                         SubCost(range)         = SubCost(range) + 1/4* CostStage.Cont(Stage(ii));
-%                         SubCostFut(range)      = SubCostFut(range) + 1/4* CostStage.FutCont(Stage(ii));
-%                         PaymentType.Cancer_con(Stage(ii), idxFin) = PaymentType.Cancer_con(Stage(ii),idxFin) + 1;
-%                         for Qcount=1:4%m8 (4*Ende-(4*Start+1)) %m here all 4 quarters of treatment are followed, unlike when difference<1.25 where only few quarters of final year are implemented
-%                            PaymentType.QCancer_con(Stage(ii), idxFin,con_y*4+qquarters*4+Qcount)  = PaymentType.QCancer_con(Stage(ii), idxFin,con_y*4+qquarters*4+Qcount) + 1; %m2 this finQ is counting in quarters %m8
-%                         end
-%                     end
-%                     
-%                     
-%                 elseif case3(ii)
-%                     range = (Start(ii)+1) : stepCounter;
-%                     %m8 SubCost(x1, (Start*4+1)+1 : (Start+5)*4)        = 1/4*CostStage.Cont(Detected.Cancer(z, x1)-6); % CONT
-%                     %m8 SubCostFut(x1, (Start*4+1)+1 : (Start+5)*4)     = 1/4*CostStage.FutCont(Detected.Cancer(z, x1)-6); % CONT
-%                     SubCost(range)    = SubCost(range) + 1/4*CostStage.Cont(Stage(ii)); % CONT
-%                     SubCostFut(range) = SubCostFut(range) + 1/4*CostStage.FutCont(Stage(ii)); % CONT
-%                     %m the following con_y is for all Difference. it must be just upto
-%                     %year 5. So, yyears must be 5?
-%                     %%m yyears = floor(Difference-1.25);
-%                     %%m qquarters = (Difference-1.25) - floor(Difference-1.25);
-%                     for con_y=1:4%%m yyears
-%                         PaymentType.Cancer_con(Stage(ii), Year(ii)+con_y) = PaymentType.Cancer_con(Stage(ii),Year(ii)+con_y) + 1;%((4*Ende-4*1)-(4*Start+1))/4;
-%                         for Qcount=(con_y*4-3):(con_y*4)
-%                             PaymentType.QCancer_con(Stage(ii), Year(ii)+con_y,Qcount) = PaymentType.QCancer_con(Stage(ii),Year(ii)+con_y,Qcount) + 1;%((4*Ende-4*1)-(4*Start+1))/4;
-%                         end
-%                     end
-%                     PaymentType.Cancer_con(Stage(ii), Year(ii)+con_y+1)= PaymentType.Cancer_con(Stage(ii), Year(ii)+con_y+1) + 0.75;
-%                     for Qcount=1:3
-%                         PaymentType.QCancer_con(Stage(ii), Year(ii)+con_y+1,Qcount) = PaymentType.QCancer_con(Stage(ii),Year(ii)+con_y+1,Qcount) + 1;%((4*Ende-4*1)-(4*Start+1))/4;
-%                     end
-%                     
-%                 end
-%                 
-%                 
             end
             
             Money.Treatment(:,IDsToAccount(ii)) = Money.Treatment(:,IDsToAccount(ii)) + sum(reshape(SubCost,numPeriods,[]))';
