@@ -799,19 +799,34 @@ while and(NAlive > 0 || ~isempty(GenderWouldBeAlive), stepCounter < yearsToSimul
             if flag.PBP % the special scenario with poor bowel preparation
                 if currentYear == PBP.Year
                     cond1 = dcurrentYear-Last.Colonoscopy(SubjectIDs) >= 10;
-                    if any(cond1)
+                    if any(cond1) %any patient fullfilling criteria
+                        IDs = SubjectIDs(cond1);
+                        PBP_Doc.Screening(IDs) = true;
+                        tmp = StageVariables.Colo_Detection; % we stored the colo-characteristics of PBP in this variable
+                        StageVariables.Colo_Detection = StageVariables.RectoSigmo_Detection;
+                        
                         if isequal(PBP.Mock, 1)
                             % mock mode, nothing will be changed by
                             % this colonoscopy
-                            
-                            
+                            Colonoscopy_Mock(IDs); %perform mock colonoscopy
                         else
-                            
+                            Number.Screening_Colonoscopy(currentYear) = Number.Screening_Colonoscopy(currentYear) + sum(cond1);
+                            Colonoscopy(IDs,'PBPx');
                         end
+                        
+                        StageVariables.Colo_Detection = tmp;
                     end
                 end
                 if PBP.RepeatYear > -1 % if repeat year not xx (i.e. not planned)
-                    
+                   if currentYear == PBP.Year + uint8(PBP.RepeatYear)
+                       cond1 = Last.Colonoscopy(SubjectIDs) == double(PBP.Year);
+                       
+                       if any(cond1)
+                           IDs = SubjectIDs(cond1);
+                           Number.Screening_Colonoscopy(currentYear) = Number.Screening_Colonoscopy(currentYear) + sum(cond1);
+                           Colonoscopy(IDs,'Scre');
+                       end
+                   end
                 end
             end
             
@@ -949,6 +964,11 @@ Money.AllCostFuture = Money.FutureTreatment + Money.Screening + Money.FollowUp +
 %    Money.(Mf{i}) = sum(Money.(Mf{i}),2); 
 % end
 
+flds = fields(PBP_Doc);
+for i = 1:length(flds)
+    PBP_Doc.(flds{i}) = double(PBP_Doc.(flds{i}));
+end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % NESTED FUNCTIONS DEFINITIONS            %
 % it is crucial to have them nested, i.e. defined before the last end
@@ -1059,9 +1079,63 @@ Money.AllCostFuture = Money.FutureTreatment + Money.Screening + Money.FollowUp +
     %%%         COLONOSCOPY MOCK                           %%
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    function Colonoscopy_Mock(SelectedSubjectID, Modus)
+    function Colonoscopy_Mock(SelectedSubjectID)
         
+        Ncolo = length(SelectedSubjectID); %number of colonoscopies to perform
         
+        [ScreenedPolyps, LocP] = ismember(Polyp.SubjectID, SelectedSubjectID);
+        [ScreenedCancers, LocC] = ismember(Ca.SubjectID, SelectedSubjectID);
+        LocP(LocP==0) = 1; %taking care of zero indexing that would throw an error
+        LocC(LocC==0) = 1; %taking care of zero indexing that would throw an error
+        
+        %select only those polyps and cancers that are reached by
+        %colonoscopy (cecum = 1, rectum = 13))
+        CurrentReach = ColoReachRandomGenerator(rand(Ncolo,1));
+        ScreenedPolyps = ScreenedPolyps & (Polyp.PolypLocation >= CurrentReach(LocP));
+        ScreenedCancers = ScreenedCancers & (Ca.CancerLocation >= CurrentReach(LocC));
+        
+        nScreenedPolyps = sum(ScreenedPolyps);
+        nScreenedCancers = sum(ScreenedCancers);
+        
+        Fpolyps = find(ScreenedPolyps);
+        detectedPolyps = rand(nScreenedPolyps,1) < StageVariables.Colo_Detection(Polyp.Polyps(ScreenedPolyps)).*...
+            Location.ColoDetection(Polyp.PolypLocation(ScreenedPolyps));
+        
+        counterAdvanced = uint8(zeros(Ncolo,1)); %number of detected advanced polyps per patient
+        counterEarly    = uint8(zeros(Ncolo,1)); %number of detected early polyps per patient
+        
+        if any(detectedPolyps)
+            idx = Fpolyps(detectedPolyps);
+            X = LocP(idx);
+            advanced = Polyp.Polyps(idx)>4;
+            U = unique(X);
+            for ii = 1:length(U)
+                counterAdvanced(U(ii)) = sum(X == U(ii) & advanced);
+                counterEarly(U(ii)) = sum(X == U(ii) & ~advanced);
+            end 
+        end
+        
+        PBP_Doc.Early(SelectedSubjectID) = counterEarly;
+        PBP_Doc.Advanced(SelectedSubjectID) = counterAdvanced;
+        
+        Fcancers = find(ScreenedCancers);
+        detectedCancers = rand(nScreenedCancers,1) < StageVariables.Colo_Detection(Ca.Cancer(ScreenedCancers));
+        
+        counterCancer    = uint8(zeros(Ncolo,1)); %number of detected cancers per patient
+        
+        if any(detectedCancers)
+            % in case of detecion we mark cancer as detected and remove it
+            idx = Fcancers(detectedCancers);
+            
+            X = LocC(idx);
+            U = unique(X);
+            for ii = 1:length(U)
+                counterCancer(U(ii)) = sum(X == U(ii));
+            end
+        end
+        
+        PBP_Doc.Cancer(SelectedSubjectID) = counterCancer;
+
     end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1069,6 +1143,9 @@ Money.AllCostFuture = Money.FutureTreatment + Money.Screening + Money.FollowUp +
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     function Colonoscopy(SelectedSubjectID, Modus)
+        
+        %check whether it is PBP mode
+        PBPudpate = any(strcmpi(Modus,{'PBPx','PBPm'}));
         
         Ncolo = length(SelectedSubjectID); %number of colonoscopies to perform
         
@@ -1115,8 +1192,17 @@ Money.AllCostFuture = Money.FutureTreatment + Money.Screening + Money.FollowUp +
             deletePolyps(idx); %deleting detected polyps
         end
         
+        %PBP udpate
+        if PBPudpate
+            PBP_Doc.Early(SelectedSubjectID) = counterEarly;
+            PBP_Doc.Advanced(SelectedSubjectID) = counterAdvanced;
+        end
+        
         [~, m] = ismember(Modus,{'Scre','Symp','Foll','Base'});
         m = uint8(m);
+        if PBPudpate
+           m = uint8(1); 
+        end
         
         Fcancers = find(ScreenedCancers);
         detectedCancers = rand(nScreenedCancers,1) < StageVariables.Colo_Detection(Ca.Cancer(ScreenedCancers));
@@ -1170,11 +1256,14 @@ Money.AllCostFuture = Money.FutureTreatment + Money.Screening + Money.FollowUp +
             deleteCancers(idx); %deleting deetcted cancers from the array
         end
         
+        if PBPudpate
+            PBP_Doc.Cancer(SelectedSubjectID) = counterCancer;
+        end
+        
         Last.Colonoscopy(SelectedSubjectID) = currentYear;
         
         moneyspent = Cost.Colonoscopy_Polyp*ones(Ncolo,1);
         factor = 1.5*ones(Ncolo,1);
-        
         noTumorAndNoPolyps = counterCancer == 0 & counterAdvanced == 0 & counterEarly == 0;
         moneyspent(noTumorAndNoPolyps) = Cost.Colonoscopy;
         factor(noTumorAndNoPolyps) = 0.75;
@@ -1241,6 +1330,8 @@ Money.AllCostFuture = Money.FutureTreatment + Money.Screening + Money.FollowUp +
         switch Modus
             case 'Scre' % Screening
                 Money.Screening(currentYear,SelectedSubjectID)    = Money.Screening(currentYear,SelectedSubjectID) + moneyspent';
+            case 'PBPx' % poor bowel preparation
+                Money.Screening(currentYear,SelectedSubjectID)    = Money.Screening(currentYear,SelectedSubjectID) + moneyspent';          
             case 'Symp' % Symptoms
                 Money.Treatment(currentYear,SelectedSubjectID)    = Money.Treatment(currentYear,SelectedSubjectID) + moneyspent';
             case 'Foll' % Follow-up
