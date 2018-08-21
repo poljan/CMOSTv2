@@ -1,0 +1,69 @@
+[System]
+Output filename=C:\Users\jpoleszczuk\Documents\StageIIImore80.txt
+Matrix filename=Survival Session-1 Matrix-21
+Database name=Incidence - SEER 13 Regs Research Data, Nov 2016 Sub (1992-2014) <Katrina/Rita Population Adjustment> - Linked To County Attributes - Total U.S., 1969-2015 Counties
+
+[Session Options]
+Type=Survival
+Rate filename=U.S. 1970-2012 by individual year (White, Black, Other (AI/API), Ages 0-99, All races for Other Unspec 1991+ and Unknown)
+Statistic=Relative Survival
+SurvivalMethod=Actuarial
+SurvivalBeginMonth=Month of diagnosis recode
+SurvivalBeginYear=Year of diagnosis
+SurvivalEndMonth=Month of follow-up recode
+SurvivalEndYear=Year of follow-up recode
+SurvivalVitalStatus=Vital status recode (study cutoff used)
+StudyCutoffDate=12/2014
+LostToFollowupDate=12/2014
+NumberOfIntervals=120
+MonthsPerInterval=1
+RatesDisplayedAs=Percents
+
+[Export Options]
+GZipped=false
+Variable format=numeric
+File format=DOS/Windows
+Field delimiter=tab
+Missing character=space
+Fields with delimiter in quotes=false
+Remove thousands separators=false
+Flags included=true
+Variable names included=false
+Column Variables as Stats=false
+
+[Summary Page Variables]
+Var1Name=Page type
+Var2Name=Summary Interval
+Var3Name=N
+Var4Name=Median Obs
+Var5Name=Median Rel
+Var6Name=Observed
+Var7Name=Expected
+Var8Name=Relative
+Var9Name=SE Obs
+Var10Name=SE Rel
+Var11Name=Obs Cum CIs Lower
+Var12Name=Obs Cum CIs Upper
+Var13Name=Rel Cum CIs Lower
+Var14Name=Rel Cum CIs Upper
+
+[Format=Page type]
+0=Life Page
+1=Summary Page
+2=Z-Statistics Page
+3=Period Life Page
+4=Period Summary Page
+5=Age Std Life Page
+
+[Format=Summary Interval]
+0=12 mo
+1=24 mo
+2=36 mo
+3=48 mo
+4=60 mo
+5=72 mo
+6=84 mo
+7=96 mo
+8=108 mo
+9=120 mo
+
