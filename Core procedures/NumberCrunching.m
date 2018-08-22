@@ -5,7 +5,7 @@ function [currentYear, GenderOut, DeathCause, Last, DeathYear, NaturalDeathYear,
     PaymentType, Money, Number, EarlyPolypsRemoved, DiagnosedCancer, AdvancedPolypsRemoved, YearIncluded, YearAlive, PBP_Doc, TumorRecord] = simulate(p, StageVariables, Location, Cost, CostStage, risc,...
     flag, SpecialText, female, Sensitivity, ScreeningTest, ScreeningPreference, AgeProgression,...
     NewPolyp, ColonoscopyLikelyhood, IndividualRisk, RiskDistribution, Gender, LifeTable, MortalityMatrix,...
-    LocationMatrix, StageDuration, tx1, DirectCancerRate, DirectCancerSpeed,DwellSpeed, PBP, SurvivalTmp, MortalityCorrection)
+    LocationMatrix, StageDuration, tx1, DirectCancerRate, DirectCancerSpeed,DwellSpeed, PBP, Survival)
 
 simSettings.yearsToSimulate = 100; %numbers of years to simulate
 simSettings.numPeriods = 4; %number of periods in each simulation year
@@ -294,21 +294,17 @@ while and(NAlive > 0 || ~isempty(GenderWouldBeAlive), stepCounter < yearsToSimul
         PolypRate(Gender==2) = PolypRate(Gender==2) * female.new_polyp_female;
         
         %mortality time generator preparations
+        ranges = uint8([50 60 70 80]);
+        whichCurve = sum(currentYear >= ranges);
+        SurvivalTmp = Survival(:,whichCurve*4 + (1:4))';
+        
         % we create a smooth curve (we take only first 6 points)
         L = double(5*numPeriods+1);
-        Surf = 1-interp1(linspace(0,1,6), SurvivalTmp(1:6),linspace(0,1,L));
-        
-        MortalityCDF = zeros(length(Surf)+1,4); %prepare matrix for CDF
+        MortalityCDF = zeros(L+1,4); %prepare matrix for CDF
         for f = 1:4
-            Surf2 = Surf * (StageVariables.Mortality(f+6))/(1-SurvivalTmp(6));
-            %if MortalityCorrection(currentYear) ~= 0
-            %    Surf2 = Surf2 + MortalityCorrection(currentYear)/(MortalityCorrection(currentYear)+1).*(1-Surf2.^2);
-            %end
-            Surf2(1) = 0;
-            Surf2 = [Surf2 1]; %to make sure it is CDF
-            Surf2(Surf2>1) = 1;
-            MortalityCDF(:,f) = Surf2;
+            MortalityCDF(:,f) = [1-interp1(linspace(0,1,6), SurvivalTmp(f,1:6),linspace(0,1,L)) 1];
         end
+        
         meshMortalityCDF = unique(MortalityCDF);
         MortalityInvCDF = zeros(length(meshMortalityCDF),4);
         for i = 1:4
