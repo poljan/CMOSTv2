@@ -9,3 +9,7 @@ SEER analysis/SEER_1973_2014_CUSTOM_TEXTDATA/incidence/yr2005.lo_2nd_half/COLREC
 SEER analysis/SEER_1973_2014_CUSTOM_TEXTDATA/ChemotherapyRadiation-SEER-DUA-2016.pdf
 SEER analysis/SEER_1973_2014_CUSTOM_TEXTDATA/incidence/read.seer.research.custom.nov16.sas
 SEER analysis/SEER_1973_2014_CUSTOM_TEXTDATA/incidence/seerdic.custom.pdf
+SEER analysis/.Rhistory
+*.tex
+*.log
+*.gz

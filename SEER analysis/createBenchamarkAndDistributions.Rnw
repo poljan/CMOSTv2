@@ -1,0 +1,63 @@
+%#create bechmark data and distribution for simulations
+\documentclass{article}
+
+\usepackage[a4paper, margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage[table]{xcolor}
+
+\newcommand{\SweaveOpts}[1]{}
+
+
+\begin{document}
+\SweaveOpts{concordance=TRUE}
+\title{Benchmark statistics and distributions used for simulations}
+\author{Jan Poleszczuk}
+\date{(for CMOSTv2)}
+\maketitle
+
+<<echo=FALSE, warning=FALSE, message = FALSE, fig.width=8, fig.height=6, fig.align = 'center'>>=
+require(SEERaBomb)
+
+rm(list = ls()) #clear the variables
+
+load("patientsDatabase.Rdata")
+load("popsae.RData") #loading information about population
+
+sex = agedx = yrdx = py = cases = reg = NULL
+
+D = cancInterst %>% select(reg, sex, agedx, year = yrdx) %>% 
+    mutate(age = agedx + 0.5) %>% select(-agedx)
+m = D %>% group_by(sex, age, year) %>% summarise(n = n()) #calculate total number of cases
+
+#take population data
+p = popsae %>% group_by(sex, age, year) %>% summarise(py = sum(py))
+
+W <- merge(p,m, by = c("age","year","sex"))
+
+NoEvents <- aggregate(W$n, by=list(age=W$age, sex = W$sex), FUN=sum)
+colnames(NoEvents) <- c("age","sex","n")
+TotPop <- aggregate(W$py, by=list(age=W$age, sex = W$sex), FUN=sum)
+colnames(TotPop) <- c("age","sex","py")
+
+#I need to fill missing regions
+
+A <- merge(NoEvents, TotPop, by =c("age","sex"))
+
+
+A$IncidencePer100000 <- A$n/(A$py)*10^5
+A$age <- A$age - 0.5
+IncidenceAgeGroup <- aggregate(A$IncidencePer100000, list(cut(A$age, breaks=c(0,4,seq(9,85,5),1000))), mean )
+
+#first we calculate incidence
+#require(SEERaBomb)
+#I <- incidSEER(cancInterst, popsae, cancers)
+#I <- I[I$year >= 2004,] #we need to have that, because we have cases after 2004
+#NoEvents <- aggregate(I$n, by=list(age=I$age, sex = I$sex), FUN=sum)
+#TotPop <- aggregate(I$py, by=list(age=I$age, sex = I$sex), FUN=sum)
+
+##now I need to group into age groups
+#IncidenceAgeGroup <- aggregate(IncidencePer100000$x, list(cut(IncidencePer100000$age, breaks=c(0,4,seq(9,85,5),90))), sum)
+
+@
+
+  \end{document}
