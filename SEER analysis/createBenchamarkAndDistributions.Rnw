@@ -31,15 +31,16 @@ m = D %>% group_by(sex, age, year) %>% summarise(n = n()) #calculate total numbe
 
 #take population data
 p = popsae %>% group_by(sex, age, year) %>% summarise(py = sum(py))
+#take only data after 2014
+p <- p[p$year >= 2004,]
 
-W <- merge(p,m, by = c("age","year","sex"))
+W <- merge(m,p, by = c("age","year","sex"), all = T)
+W$n[is.na(W$n)] <- 0
 
 NoEvents <- aggregate(W$n, by=list(age=W$age, sex = W$sex), FUN=sum)
 colnames(NoEvents) <- c("age","sex","n")
 TotPop <- aggregate(W$py, by=list(age=W$age, sex = W$sex), FUN=sum)
 colnames(TotPop) <- c("age","sex","py")
-
-#I need to fill missing regions
 
 A <- merge(NoEvents, TotPop, by =c("age","sex"))
 
@@ -47,16 +48,6 @@ A <- merge(NoEvents, TotPop, by =c("age","sex"))
 A$IncidencePer100000 <- A$n/(A$py)*10^5
 A$age <- A$age - 0.5
 IncidenceAgeGroup <- aggregate(A$IncidencePer100000, list(cut(A$age, breaks=c(0,4,seq(9,85,5),1000))), mean )
-
-#first we calculate incidence
-#require(SEERaBomb)
-#I <- incidSEER(cancInterst, popsae, cancers)
-#I <- I[I$year >= 2004,] #we need to have that, because we have cases after 2004
-#NoEvents <- aggregate(I$n, by=list(age=I$age, sex = I$sex), FUN=sum)
-#TotPop <- aggregate(I$py, by=list(age=I$age, sex = I$sex), FUN=sum)
-
-##now I need to group into age groups
-#IncidenceAgeGroup <- aggregate(IncidencePer100000$x, list(cut(IncidencePer100000$age, breaks=c(0,4,seq(9,85,5),90))), sum)
 
 @
 
