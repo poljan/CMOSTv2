@@ -2,7 +2,13 @@ require(dplyr)
 
 rm(list = ls()) #clear the variables
 
-load("patientsDatabase.Rdata")
+whichPeriod <- 0 #0 = 1988 to 200; 1 = 2004+ 
+
+if (whichPeriod == 1) {
+  load("patientsDatabase2004+.Rdata")
+} else {
+  load("patientsDatabase88-00.Rdata")
+}
 load("popsae.RData") #loading information about population
 
 sex = agedx = yrdx = py = cases = reg = NULL
@@ -16,8 +22,12 @@ m <- m[m$age <= 99.5, ]
 
 #take population data
 p = popsae %>% group_by(sex, age, year) %>% summarise(py = sum(py))
-#take only data after 2014
-p <- p[p$year >= 2004,]
+if (whichPeriod == 1) {
+  #take only data after 2004
+  p <- p[p$year >= 2004,]
+} else {
+  p <- p[p$year >= 1988 & p$year <= 2000,]
+}
 
 W <- merge(m,p, by = c("age","year","sex"), all = T)
 W$n[is.na(W$n)] <- 0

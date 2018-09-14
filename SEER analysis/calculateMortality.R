@@ -2,7 +2,13 @@
 
 rm(list = ls())
 
-M <- read.table("exportMortality.txt")
+whichPeriod <- 0 #0 = 1988 to 200; 1 = 2004+ 
+
+if (whichPeriod == 1) {
+  M <- read.table("exportMortality2004+.txt")
+} else {
+  M <- read.table("exportMortality88-00.txt")
+}
 
 colnames(M) <- c("Age recode with <1 year olds", "Sex","Age-Adjusted Rate","Count","Population")
 
