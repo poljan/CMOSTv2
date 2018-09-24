@@ -463,6 +463,9 @@ All={p, StageVariables, Location, Cost, CostStage, risc, flag, SpecialText, fema
 
 data.InputCost = Cost;
 data.InputCostStage = CostStage;
+
+%handles.data = data;
+%handles.stats = stats;
     
 % for some evaluations special algorithms exist
 % if flag.SpecialFlag
@@ -482,6 +485,6 @@ data.InputCostStage = CostStage;
 
 % we start the evaluation routine
 %data.PBP = PBP;
-BM = [];
-%[data,BM] = Evaluation_PBP_IndCosts(data, handles.Variables); % ,Step,Iter); BM
-%BM.RSRCT  = tmp;
+%BM = [];
+[data,BM] = Evaluation_PBP_IndCosts(data, handles.Variables); % ,Step,Iter); BM
+BM.RSRCT  = tmp;

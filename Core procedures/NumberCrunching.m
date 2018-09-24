@@ -282,10 +282,12 @@ PBP.Year = uint8(PBP.Year);
 
 %% MAIN SIMULATION LOOP
 stepCounter = uint16(0); %
+ni = uint16(stats.mortalityYears);
 while and(NAlive > 0 || ~isempty(GenderWouldBeAlive), stepCounter < yearsToSimulate*numPeriods)
     currentYear = idivide(stepCounter,numPeriods)+1; %need to use idivide, because of interger division rounding
     currentYear = uint8(currentYear); %just to be on a safe side when indexing matrices
     stepCounter = stepCounter + 1;
+    
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %  some precalculation steps, done only once a year %
@@ -295,25 +297,48 @@ while and(NAlive > 0 || ~isempty(GenderWouldBeAlive), stepCounter < yearsToSimul
         % the gender specific risk
         PolypRate(Gender==2) = PolypRate(Gender==2) * female.new_polyp_female;
         
-        %mortality time generator preparations
-        ranges = uint8([50 60 70 80]);
+        %% mortality time generator preparations
+        ranges = uint8([51 60 70 80]);
         whichCurve = sum(currentYear >= ranges);
-        SurvivalTmp = Survival(:,whichCurve*4 + (1:4))';
+        
+        %I need to select survival curves by gender and for current age
+        %group
+        % SurvivalTmp = Survival(:,whichCurve*4 + (1:4))';
+        nEl = 11; %number of data points for survival, there is data for 0,12,..,120 months
+        nAgeGroups = 5; %number of available age groups
+        nStages = 4;
+        
+        %gender -> stage -> age
+        femaleShift = nEl*nAgeGroups*nStages;
+        stageShift = nEl*nAgeGroups;
+        indxS = ((1:nEl) + whichCurve*nEl)';
+        SurvivalTmpMale   = stats.osByGenderAgeStage.surv([indxS indxS+stageShift indxS+2*stageShift indxS+3*stageShift])';
+        SurvivalTmpFemale = stats.osByGenderAgeStage.surv([indxS indxS+stageShift indxS+2*stageShift indxS+3*stageShift]+femaleShift)';
+        
+        %%
         
         % we create a smooth curve (we take only first 6 points)
-        L = double(5*numPeriods+1);
-        MortalityCDF = zeros(L+1,4); %prepare matrix for CDF
+        L = double(ni*numPeriods+1);
+        MortalityCDFmale = zeros(L+1,4); %prepare matrix for CDF
+        MortalityCDFfemale = zeros(L+1,4); %prepare matrix for CDF
         for f = 1:4
-            MortalityCDF(:,f) = [1-interp1(linspace(0,1,6), SurvivalTmp(f,1:6),linspace(0,1,L)) 1];
+            MortalityCDFmale(:,f) = [1-interp1(linspace(0,1,6), SurvivalTmpMale(f,1:(ni+1)),linspace(0,1,L)) 1];
+            MortalityCDFfemale(:,f) = [1-interp1(linspace(0,1,6), SurvivalTmpFemale(f,1:(ni+1)),linspace(0,1,L)) 1];
         end
         
-        meshMortalityCDF = unique(MortalityCDF);
-        MortalityInvCDF = zeros(length(meshMortalityCDF),4);
+        meshMortalityCDFmale = unique(MortalityCDFmale);
+        meshMortalityCDFfemale = unique(MortalityCDFfemale);
+        MortalityInvCDFmale = zeros(length(meshMortalityCDFmale),4);
+        MortalityInvCDFfemale = zeros(length(meshMortalityCDFfemale),4);
         for i = 1:4
-            MortalityInvCDF(:,i) = interp1(MortalityCDF(:,i)', 1:(L+1), meshMortalityCDF);
+            MortalityInvCDFmale(:,i) = interp1(MortalityCDFmale(:,i)', 1:(L+1), meshMortalityCDFmale);
+            MortalityInvCDFfemale(:,i) = interp1(MortalityCDFfemale(:,i)', 1:(L+1), meshMortalityCDFfemale);
         end
-        Fmort = griddedInterpolant({7:10, meshMortalityCDF},MortalityInvCDF');
-        MortalityRandomGenerator = @(Stage, R)(uint16(floor(Fmort(Stage,R))));
+        FmortMale = griddedInterpolant({7:10, meshMortalityCDFmale},MortalityInvCDFmale');
+        FmortFemale = griddedInterpolant({7:10, meshMortalityCDFfemale},MortalityInvCDFfemale');
+        
+        MortalityRandomGeneratorMale   = @(Stage, R)(uint16(floor(FmortMale(Stage,R))));
+        MortalityRandomGeneratorFemale = @(Stage, R)(uint16(floor(FmortFemale(Stage,R))));
         
         %stage random number generator definition
         ageGroups = uint8([0 (19:5:85)+1]);
@@ -383,7 +408,7 @@ while and(NAlive > 0 || ~isempty(GenderWouldBeAlive), stepCounter < yearsToSimul
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %    people die of cancer           %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    diedOfCancer = Detected.MortTime < 5*numPeriods+1 & (stepCounter - Detected.CancerYear) >= Detected.MortTime;
+    diedOfCancer = Detected.MortTime < ni*numPeriods+1 & (stepCounter - Detected.CancerYear) >= Detected.MortTime;
     if any(diedOfCancer)
         deathIDs = unique(Detected.SubjectID(diedOfCancer));
         DeathCause(deathIDs) = 2;
@@ -1243,7 +1268,12 @@ end
             Detected.Cancer         = [Detected.Cancer; Ca.Cancer(idx)];
             Detected.CancerYear     = [Detected.CancerYear; repmat(stepCounter, length(idx),1)];
             Detected.CancerLocation = [Detected.CancerLocation; Ca.CancerLocation(idx)];
-            MortTime = MortalityRandomGenerator(double(Ca.Cancer(idx)),rand(length(idx),1));%+4;
+            %MortTime = MortalityRandomGenerator(double(Ca.Cancer(idx)),rand(length(idx),1));%+4;
+            MortTime = zeros(length(idx),1);
+            malesLoc = Ca.OwnersGender(idx) == 1;
+            MortTime(malesLoc) = MortalityRandomGeneratorMale(double(Ca.Cancer(idx(malesLoc))),rand(sum(malesLoc),1));%+4;
+            MortTime(~malesLoc) = MortalityRandomGeneratorFemale(double(Ca.Cancer(idx(~malesLoc))),rand(sum(~malesLoc),1));%+4;
+            
             Detected.MortTime       = [Detected.MortTime; MortTime];
             Detected.SubjectID      = [Detected.SubjectID; Ca.SubjectID(idx)];
             
