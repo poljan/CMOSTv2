@@ -5,7 +5,7 @@ function [currentYear, GenderOut, DeathCause, Last, DeathYear, NaturalDeathYear,
     PaymentType, Money, Number, EarlyPolypsRemoved, DiagnosedCancer, AdvancedPolypsRemoved, YearIncluded, YearAlive, PBP_Doc, TumorRecord] = simulate(p, StageVariables, Location, Cost, CostStage, risc,...
     flag, SpecialText, female, Sensitivity, ScreeningTest, ScreeningPreference, AgeProgression,...
     NewPolyp, ColonoscopyLikelyhood, IndividualRisk, RiskDistribution, Gender, LifeTable, MortalityMatrix,...
-    LocationMatrix, StageDuration, tx1, DirectCancerRate, DirectCancerSpeed,DwellSpeed, PBP, Survival)
+    LocationMatrix, StageDuration, tx1, DirectCancerRate, DirectCancerSpeed,DwellSpeed, PBP, Survival, stats)
 
 simSettings.yearsToSimulate = 100; %numbers of years to simulate
 simSettings.numPeriods = 4; %number of periods in each simulation year
@@ -100,9 +100,11 @@ StageDurationC(StageDurationC == 1) = Inf;
 %griddedInterpolants
 %this saves memory especially in the case of Mortality time generation
 
+%the beloow lines are depreciated, now in the main loop there is gender and
+%age dependent stage random number generator
 % Stage 1: 5%, Stage 2: 35%, Stage 3: 40%, Stage 4: 20% - THIS IS NOT TRUE
-StageProbability = [0 cumsum([150 356 279 215]/1000)];
-StageRandomGenerator = griddedInterpolant(StageProbability,7:11,'previous');
+%StageProbability = [0 cumsum([150 356 279 215]/1000)];
+%StageRandomGenerator = griddedInterpolant(StageProbability,7:11,'previous');
 
 %defining sojourn time random generator
 SojournCDF = [zeros(1,4); cumsum(bsxfun(@rdivide,tx1,sum(tx1)))]; %cumulative distribution function
@@ -313,6 +315,27 @@ while and(NAlive > 0 || ~isempty(GenderWouldBeAlive), stepCounter < yearsToSimul
         Fmort = griddedInterpolant({7:10, meshMortalityCDF},MortalityInvCDF');
         MortalityRandomGenerator = @(Stage, R)(uint16(floor(Fmort(Stage,R))));
         
+        %stage random number generator definition
+        ageGroups = uint8([0 (19:5:85)+1]);
+        ageGroup = sum(currentYear >= ageGroups); %which age group we are considering now
+        
+        femalesIndcs = cellfun(@(x)(strcmpi(x,'female')),stats.stageDistribution.sex);
+        dataF = table2array(stats.stageDistribution(femalesIndcs,3:6));
+        dataM = table2array(stats.stageDistribution(~femalesIndcs,3:6));
+        dataF = dataF(ageGroup,:); dataFcum = [0 cumsum(dataF)];
+        dataM = dataM(ageGroup,:); dataMcum = [0 cumsum(dataM)];
+        StageProbability = [dataMcum; dataFcum]';
+        
+        meshStageCDF = unique(StageProbability);
+        StageInvCDF = zeros(length(meshStageCDF),2);
+        for i = 1:2
+            StageInvCDF(:,i) = interp1(StageProbability(:,i)', 7:11, meshStageCDF);
+        end
+        
+        %Gender == 2 is female, 1 is male
+        Fstage = griddedInterpolant({1:2, meshStageCDF},StageInvCDF');
+        StageRandomGenerator = @(Gender, R)(floor(Fstage(Gender,R)));
+        
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %    summarizing cancer (once a year) %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -425,7 +448,8 @@ while and(NAlive > 0 || ~isempty(GenderWouldBeAlive), stepCounter < yearsToSimul
         IDs = SubjectIDs(developNewCancer);
         Ca.SubjectID = [Ca.SubjectID; IDs];
         
-        SympStage = StageRandomGenerator(rand(numNewCancers,1));
+        %SympStage = StageRandomGenerator(rand(numNewCancers,1));
+        SympStage = StageRandomGenerator(double(Gender(developNewCancer)), rand(numNewCancers,1));
         SympTimeAdd = SojournRandomGenerator(SympStage,rand(numNewCancers,1));
 
         SympTimeAddDouble = double(SympTimeAdd);
@@ -496,7 +520,8 @@ while and(NAlive > 0 || ~isempty(GenderWouldBeAlive), stepCounter < yearsToSimul
                 IDs = Polyp.SubjectID(progressionToCancer);
                 Ca.SubjectID = [Ca.SubjectID; IDs];
                 
-                SympStage = StageRandomGenerator(rand(numNewCancers,1));
+                %SympStage = StageRandomGenerator(rand(numNewCancers,1));
+                SympStage = StageRandomGenerator(double(Polyp.OwnersGender(progressionToCancer)),rand(numNewCancers,1));
                 SympTimeAdd = SojournRandomGenerator(SympStage,rand(numNewCancers,1));
                 
                 SympTimeAddDouble = double(SympTimeAdd);
