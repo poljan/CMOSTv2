@@ -27,10 +27,19 @@ function varargout = CMOST_Main(varargin)
 %      Program created by Benjamin Misselwitz, 2010-2011
 
 %adding necessary paths to other functions
-addpath('Core procedures');
-addpath('Additional procedures');
-addpath('Storyboards');
-addpath('Settings');
+% addpath('Core procedures');
+% addpath('Additional procedures');
+% addpath('Storyboards');
+% addpath('Settings');
+%adding necessary paths to other functions
+tmp = mfilename('fullpath');
+tmp2= tmp(1:strfind(tmp, 'CMOST_Main')-1);
+
+addpath(fullfile(tmp2,'Core procedures'));
+addpath(fullfile(tmp2,'Additional procedures'));
+addpath(fullfile(tmp2,'Storyboards'));
+addpath(fullfile(tmp2,'Settings'));
+
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;

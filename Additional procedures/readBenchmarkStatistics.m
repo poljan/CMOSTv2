@@ -25,7 +25,10 @@ function stats = readBenchmarkStatistics(inputFolder, whichSet)
 %1988-2000, 2 - 2004+
 
 if nargin < 1
-    inputFolder = 'SEER analysis';
+    %inputFolder = 'SEER analysis';
+    tmp = mfilename('fullpath');
+    tmp2= tmp(1:strfind(tmp, 'Additional')-1);
+    inputFolder = fullfile(tmp2,'SEER analysis');
 end
 
 if nargin < 2
