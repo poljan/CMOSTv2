@@ -95,7 +95,7 @@ handles.Variables.ResultsPath = fullfile(Path(1:pos-1), 'Results');
 handles.Variables.CurrentPath = CurrentPath;
 clear temp
 
-handles.Variables.NumberPatientsValues = [10000 25000 50000 100000];
+handles.Variables.NumberPatientsValues = [10000 25000 50000 100000 200000 500000];
 guidata(hObject, handles)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -125,6 +125,7 @@ function handles = MakeImagesCurrent(hObject, handles)
  
 tmp = find(handles.Variables.NumberPatientsValues == handles.Variables.Number_patients);
 set(handles.Number_patients, 'value', tmp)
+handles.Variables.NumberPatientsValues = [10000 20000 50000 100000 200000 500000];
 
 set(handles.SaveDataPath_Edit, 'string', handles.Variables.ResultsPath)
 set(handles.settings_name, 'string', handles.Variables.Settings_Name)
