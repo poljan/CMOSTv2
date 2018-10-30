@@ -981,6 +981,7 @@ TumorRecordOut.DwellTime = zeros(10000, yearsToSimulate);
 TumorRecordOut.Gender = zeros(10000, yearsToSimulate);
 TumorRecordOut.Detection = zeros(10000, yearsToSimulate);
 TumorRecordOut.PatientNumber = zeros(10000, yearsToSimulate);
+TumorRecordOut.Time = zeros(10000, yearsToSimulate); % FIX BM 27.10.2018 
 
 for i = 1:yearsToSimulate
     idxTmp = (TumorRecord.Year == i);
@@ -993,6 +994,7 @@ for i = 1:yearsToSimulate
         TumorRecordOut.Gender(1:Nrec,i) = TumorRecord.Gender(idxTmp);
         TumorRecordOut.Detection(1:Nrec,i) = TumorRecord.Detection(idxTmp);
         TumorRecordOut.PatientNumber(1:Nrec,i) = TumorRecord.SubjectID(idxTmp);
+        TumorRecordOut.Time(1:Nrec,i) = TumorRecord.Time(idxTmp); % FIX BM 27.10.2018 
     end
 end
 

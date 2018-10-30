@@ -95,7 +95,7 @@ handles.Variables.ResultsPath = fullfile(Path(1:pos-1), 'Results');
 handles.Variables.CurrentPath = CurrentPath;
 clear temp
 
-handles.Variables.NumberPatientsValues = [10000 25000 50000 100000 200000 500000];
+handles.Variables.NumberPatientsValues = [10000 25000 50000 100000];
 guidata(hObject, handles)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -123,9 +123,11 @@ function handles = MakeImagesCurrent(hObject, handles)
 % This function is called whenever a change is made within the GUI. This 
 % function makes these changes visible
  
+% FIX BM to enable higher number of patients 26.10.2018
+handles.Variables.NumberPatientsValues = [10000 20000 50000 100000 200000 500000];
+
 tmp = find(handles.Variables.NumberPatientsValues == handles.Variables.Number_patients);
 set(handles.Number_patients, 'value', tmp)
-handles.Variables.NumberPatientsValues = [10000 20000 50000 100000 200000 500000];
 
 set(handles.SaveDataPath_Edit, 'string', handles.Variables.ResultsPath)
 set(handles.settings_name, 'string', handles.Variables.Settings_Name)
@@ -690,5 +692,3 @@ function Auto_calib_123_bootstrapping_Callback(hObject, eventdata, handles)
 handles = AutomaticCalibration_Steps123(handles, 'bootstrapping');
 handles = MakeImagesCurrent(hObject, handles);
 guidata(hObject, handles)
-
-
