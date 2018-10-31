@@ -54,11 +54,11 @@ stageDistributionFile = [inputFolder '/StageAtDiagnosis'  fileEndName '.xlsx'];
 stats.stageDistribution = readtable(stageDistributionFile);
 
 %read overall survival by gender only
-osfile = [inputFolder '/OverallSurvivalBySex'  fileEndName '.xlsx'];
+osfile = [inputFolder '/OverallSurvivalBySexCOD'  fileEndName '.xlsx'];
 stats.osByGender = readtable(osfile);
 
 %read overall survival by gender, age, and stage
-osfile = [inputFolder '/OverallSurvivalBySexAgeStage'  fileEndName '.xlsx'];
+osfile = [inputFolder '/OverallSurvivalBySexAgeStageCOD'  fileEndName '.xlsx'];
 stats.osByGenderAgeStage = readtable(osfile);
 
 end

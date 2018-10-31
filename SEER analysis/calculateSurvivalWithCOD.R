@@ -3,7 +3,7 @@ rm(list = ls())
 library(survival)
 library(xlsx)
 
-whichPeriod <- 0 #0 = 1988 to 2000; 1 = 2004+ 
+whichPeriod <- 1 #0 = 1988 to 2000; 1 = 2004+ 
 
 if (whichPeriod == 1) {
   load("patientsDatabase2004+.Rdata")
@@ -15,6 +15,9 @@ if (whichPeriod == 1) {
 cancInterst <- cancInterst[cancInterst$seqnum <= 1,] #only first primary
 #cancInterst <- cancInterst[cancInterst$srvtimemonflag <= 1,]
 
+#remove CODs that are undefined
+cancInterst <- cancInterst[cancInterst$codpubkm != 41000 & cancInterst$codpubkm != 99999,]
+
 #alive == 1, dead == 4
 indx <- cancInterst$statrec == 1 & cancInterst$surv == 0
 cancInterst <- cancInterst[!indx,]
@@ -23,6 +26,9 @@ attach(cancInterst)
 cancInterst$statrec[statrec == 1] <- 0 #alive (censored)
 cancInterst$statrec[statrec == 4] <- 1 #dead
 
+#if COD (cause of death) is other than colon and rectum then introduce censoring
+indx <- !(cancInterst$codpubkm %in% c(21040, 21050, 21060))
+cancInterst$statrec[indx] <- 0 #alive (censored)
 
 #limiting to 120 months
 indx <- cancInterst$surv > 120
@@ -37,7 +43,7 @@ KM <- survfit(SurvObj ~ sex, data = cancInterst, conf.type = "log-log")
 overall <- summary(KM, times = seq(0,120,12))
 save.df <- as.data.frame(overall[c("strata", "time", "n.risk", "n.event", "surv", "std.err", "lower", "upper")])
 
-write.xlsx(save.df,"OverallSurvivalBySex.xlsx",sheet = "OverallSurvivalBySex")
+write.xlsx(save.df,"OverallSurvivalBySexCOD.xlsx",sheet = "OverallSurvivalBySexCOD")
 
 #defining age groups and stages
 cancInterst$ageGroupMDanderson <- cut(cancInterst$agedx, breaks=c(0,50,59,69,79,100))
@@ -71,6 +77,6 @@ KM <- survfit(SurvObj ~ sex + stageCode + ageGroupMDanderson, data = cancInterst
 overall <- summary(KM, times = seq(0,120,12))
 save.df <- as.data.frame(overall[c("strata", "time", "n.risk", "n.event", "surv", "std.err", "lower", "upper")])
 
-write.xlsx(save.df,"OverallSurvivalBySexAgeStage.xlsx",sheet = "OverallSurvivalBySexAgeStage",append = TRUE)
+write.xlsx(save.df,"OverallSurvivalBySexAgeStageCOD.xlsx",sheet = "OverallSurvivalBySexAgeStageCOD",append = TRUE)
 
            

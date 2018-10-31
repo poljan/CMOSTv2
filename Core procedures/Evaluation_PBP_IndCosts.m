@@ -58,7 +58,10 @@ Variables.Benchmarks.MultiplePolypsYoung = [18 5  3  3 2];
 % MidBenchmark   = Variables.Benchmarks.MultiplePolyp;
 Variables.Benchmarks.MultiplePolypsOld   = [40 24 10 8 4];
 
-Variables.Benchmarks.Cancer.SymptomaticStageDistribution  = [15 35.6 27.9 21.5];
+%Variables.Benchmarks.Cancer.SymptomaticStageDistribution  = [15 35.6 27.9 21.5];
+% now I just averaged the benchmarks of the 1988-2000 period
+Variables.Benchmarks.Cancer.SymptomaticStageDistribution  = [18.92 27.67 29.89 23.52];
+
 Variables.Benchmarks.Cancer.ScreeningStageDistribution    = [39.5 34.7 17.3 8.5];
 
 Variables.Benchmarks.Cancer.LocationRectumMale   = [41.2     34.1      28.6     23.8];
@@ -66,6 +69,13 @@ Variables.Benchmarks.Cancer.LocationRectumFemale = [37.2     28.3      23.0     
 Variables.Benchmarks.Cancer.LocationRectumYear   = {[51 55], [61 65], [71 75], [81 85]};  % year adapted
 
 Variables.Benchmarks.Cancer.Fastcancer           = [0.005 0.05 0.08 0.25 3 20];
+
+%SEER 1988 - 2000
+Variables.Benchmarks.Cancer.Ov_y_mort  = [1.5  5.5  12   17     22   27   32  37   42  47   52   57   62    67   72    77     82     87];
+Variables.Benchmarks.Cancer.Ov_mort     = [0   0    0    0.1    0.2  0.4  1   2    4   8.2  15.8 28.6 47.2  71.2 102.6 140.4  193.5  285.1];
+Variables.Benchmarks.Cancer.Male_mort   = [0   0    0    0.1    0.2  0.5  1.1 2.1  4.3 9.2  18.2 34   58.1  89.2 128.8 176.2  241.5  342.2];
+Variables.Benchmarks.Cancer.Female_mort = [0   0    0    0.1    0.2  0.4  0.9 1.8  3.7 7.3  13.5 23.6 37.5  56.2 82.6  116.5  166.8  262.7];
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%       FIGUREs                                              %%%
@@ -1368,7 +1378,46 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%   Cancer Mortality All/ Male/ Female   %%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
 
+% FIX from Benjamin Misselwitz BM to calculate survival 27.10.2018
+tmp = find(data.TumorRecord.Stage);
+Stage           = data.TumorRecord.Stage(tmp) - 6;
+Gender          = data.TumorRecord.Gender(tmp);
+PatientNumber   = data.TumorRecord.PatientNumber(tmp);
+Time            = data.TumorRecord.Time(tmp);
+GenderLabel = {'m', 'f'};
+StageLabel  = {'I', 'II', 'III', 'IV'};
+TimeLabel   = {'50', '60', '70', '80', '90'};
+for f1 = 1:2
+    for f2 = 1:4
+        for f3 = 1:5
+            Label = ['SurvPlot_' TimeLabel{f3} '_' GenderLabel{f1} '_' StageLabel{f2}];
+            Coun.(Label) = 1;
+            Surv.(Label) = zeros(1,2);
+        end
+    end
+end
+for f = 1:length(tmp)
+    survival  = data.DeathCause(PatientNumber(f)) >0; % == 2; % true if CRC death
+    DeathTime = data.DeathYear(PatientNumber(f)) - Time(f);
+    if Time(f)<51
+        t_label = '50';
+    elseif Time(f)<61
+        t_label = '60';
+    elseif Time(f)<71
+        t_label = '70';
+    elseif Time(f)<81
+        t_label = '80';
+    else
+        t_label = '90';
+    end
+    Label = ['SurvPlot_' t_label '_' GenderLabel{Gender(f)} '_' StageLabel{Stage(f)}];
+    Surv.(Label)(Coun.(Label), 1) = DeathTime;
+    Surv.(Label)(Coun.(Label), 2) = survival;
+    Coun.(Label) = Coun.(Label) +1;
+end
+%%
 clear i j tmp3 tmp4 tmp5
 DeathYear = floor(data.DeathYear);
 for f1=1:3
@@ -1917,7 +1966,12 @@ if ResultsFlag
     for f=1:3
         if isequal(exist(FileName, 'file'), 0)
             pause(5)
-            save(FileName, 'Results')
+            try
+                save(FileName, 'Results')
+            catch
+                warning('Could not save matlab results file, try entering a correct pathway to the save data path in main window.')
+            end
+            
         else
             return
         end
