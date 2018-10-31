@@ -1276,6 +1276,8 @@ end
             MortTime(malesLoc) = MortalityRandomGeneratorMale(double(Ca.Cancer(idx(malesLoc))),rand(sum(malesLoc),1));%+4;
             MortTime(~malesLoc) = MortalityRandomGeneratorFemale(double(Ca.Cancer(idx(~malesLoc))),rand(sum(~malesLoc),1));%+4;
             
+            %we need to block the patient from dying before the MortTime
+            
             Detected.MortTime       = [Detected.MortTime; MortTime];
             Detected.SubjectID      = [Detected.SubjectID; Ca.SubjectID(idx)];
             
