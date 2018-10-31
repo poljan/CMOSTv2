@@ -15,6 +15,8 @@ disp(['Simulated population size: ' int2str(NAlive)]);
 SubjectIDs = uint32(1:NAlive)'; %this will hold actual indices to the output vector
 NumIndividualsToSimulate = NAlive;
 
+BlockFromDeath = false(NAlive,1);
+
 PBP_Doc.Early     = int16(ones(1, NAlive)*-1); % number early adenomas
 PBP_Doc.Advanced  = int16(ones(1, NAlive)*-1); % number advanced adenomas
 PBP_Doc.Cancer    = int16(ones(1, NAlive)*-1); % number cancer
@@ -381,7 +383,7 @@ while and(NAlive > 0 || ~isempty(GenderWouldBeAlive), stepCounter < yearsToSimul
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %  people die of natural causes     %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    diedNaturalCauses = rand(NAlive,1) < LifeTable(Gender,currentYear);%those will die now from other causes
+    diedNaturalCauses = rand(NAlive,1) < LifeTable(Gender,currentYear) & ~BlockFromDeath;%those will die now from other causes
     if any(diedNaturalCauses)
         NaturalDeathYear(SubjectIDs(diedNaturalCauses)) = stepCounter;
         DeathCause(SubjectIDs(diedNaturalCauses)) = 1;
@@ -419,7 +421,22 @@ while and(NAlive > 0 || ~isempty(GenderWouldBeAlive), stepCounter < yearsToSimul
         death(ismember(SubjectIDs, deathIDs));
     end
     
-    
+    %%%% I need to unblock those that that survived given period
+%     survivedPeriod = Detected.MortTime >= ni*numPeriods+1 & (stepCounter - Detected.CancerYear) >= Detected.MortTime;
+%     if any(survivedPeriod)
+%         survivedIDs = unique(Detected.SubjectID(survivedPeriod));
+%         %remove those that survived from Detected
+%         deleteDetectedCancers(survivedPeriod);
+%         %unblock the patients for dying
+%         [im, LocC] = ismember(survivedIDs, SubjectIDs);
+%         if ~all(im)
+%             disp('Grave error #ID ublockingPatientError');
+%         else
+%             %finding which patients to block
+%             %disp('Unblocking')
+%             BlockFromDeath(LocC) = false;
+%         end
+%     end
     %%%
     R = rand(NAlive,2); %generating random numbers in advance
     
@@ -1058,6 +1075,7 @@ end
         NAlive = sum(whichSubjects);
         IndividualRisk = IndividualRisk(whichSubjects);
         PolypRate = PolypRate(whichSubjects);
+        BlockFromDeath = BlockFromDeath(whichSubjects);
         
         ScreeningPreference = ScreeningPreference(whichSubjects);
     end
@@ -1277,6 +1295,16 @@ end
             MortTime(~malesLoc) = MortalityRandomGeneratorFemale(double(Ca.Cancer(idx(~malesLoc))),rand(sum(~malesLoc),1));%+4;
             
             %we need to block the patient from dying before the MortTime
+            %first I need to locate the patients in the whole cohort
+            [im, LocC] = ismember(unique(Ca.SubjectID(idx(MortTime < ni*numPeriods+1))), SubjectIDs);
+            if ~all(im)
+                disp('Grave error #ID colonoscopyBlockPatient');
+            else
+                %finding which patients to block
+                %disp('Blocking')
+                
+                BlockFromDeath(LocC) = true;
+            end
             
             Detected.MortTime       = [Detected.MortTime; MortTime];
             Detected.SubjectID      = [Detected.SubjectID; Ca.SubjectID(idx)];
