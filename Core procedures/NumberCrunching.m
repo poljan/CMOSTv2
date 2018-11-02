@@ -856,8 +856,65 @@ while and(NAlive > 0 || ~isempty(GenderWouldBeAlive), stepCounter < yearsToSimul
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %    special scenarios              %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        
         if flag.SpecialFlag
+            
+             if flag.Atkin 
+                 if currentYear == 1
+                     % randomly one test year between 55 and 64
+                     tmp=55:64;
+                     Ntmp = size(Last.Included,2); %initial population size
+                     Last.Included = tmp(randi(length(tmp),Ntmp,1));
+                     adh = rand(1,Ntmp) < 0.71;% adherence to first screening
+                     Last.TestYear(adh) = Last.Included(adh);
+                 else
+                     dcurrentYear = double(currentYear); %convert to double
+                     screen = Last.Included == dcurrentYear;
+                     if any(screen)
+                        % we need to check inclusion criteria
+                         StudyFlag = dcurrentYear-Last.Colonoscopy(screen) > 3;
+                         StudyFlag = StudyFlag & Last.Cancer(screen) == -100;
+                         StudyFlag = StudyFlag & Last.Polyp(screen) == -100;
+                         StudyFlag = StudyFlag & Last.AdvPolyp(screen) == -100;
+                         
+                         if any(~StudyFlag) % we exclude the patient by setting the years to -1
+                             ex = find(screen);
+                             ex = ex(~StudyFlag);%those will be excluded
+                             Last.TestYear(ex)  = -1;
+                             Last.TestYear2(ex) = -1;
+                             Last.Included(ex)  = -1;
+                         end
+                     end
+                     
+                     testYear = Last.TestYear == dcurrentYear;
+                     if any(testYear)
+                         Last.TestDone(testYear) = 1;
+                         if ~flag.Mock
+                             Number.RectoSigmo(currentYear) = Number.RectoSigmo(currentYear) + sum(testYear);
+                             IDsSR = find(testYear);
+                             %make sure that the patients with given ID are
+                             %alive
+                             IDsSR = IDsSR(ismember(IDsSR, SubjectIDs));
+                             [PolypFlag, AdvPolypFlag, CancerFlag] = RectoSigmo(IDsSR);
+                             if any(AdvPolypFlag)
+                                Last.Polyp(IDsSR(AdvPolypFlag ~= 0)) = dcurrentYear;
+                             end
+                             indxLoc = PolypFlag & AdvPolypFlag == 0;
+                             if any(indxLoc)
+                                Last.Polyp(IDsSR(indxLoc)) = dcurrentYear; 
+                             end
+                             
+                             indxLoc = AdvPolypFlag | CancerFlag;
+                             if any(indxLoc)
+                                  Number.Screening_Colonoscopy(currentYear) = Number.Screening_Colonoscopy(currentYear) + sum(indxLoc);
+                                  Colonoscopy(IDsSR(indxLoc),'Scre');
+                             end
+                                 
+                         end
+                     end
+                     
+                 end
+
+             end
             
             if flag.PBP % the special scenario with poor bowel preparation
                 if currentYear == PBP.Year
