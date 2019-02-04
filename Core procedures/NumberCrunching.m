@@ -797,8 +797,16 @@ while and(NAlive > 0 || ~isempty(GenderWouldBeAlive), stepCounter < yearsToSimul
                         
                         Limit = zeros(Nother,1);
                         for kk = 1:length(IDsSR)
-                            M = max(max(Cstage(CID == IDsSR(kk))),max(Pstage(PID == IDsSR(kk))));
-                            if ~isempty(M)
+                            MC = max(Cstage(CID == IDsSR(kk)));
+                            MP = max(Pstage(PID == IDsSR(kk)));
+                            if isempty(MC)
+                               MC = -1; 
+                            end
+                            if isempty(MP)
+                               MP = -1; 
+                            end
+                            M = max(MC, MP);
+                            if M > 0 %if anything to screen
                                Limit(kk) = Sensitivity(preferencesOther(kk),M);
                             end
                         end

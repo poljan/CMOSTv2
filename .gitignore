@@ -13,3 +13,7 @@ SEER analysis/.Rhistory
 *.tex
 *.log
 *.gz
+CMOST13_Screening_90perc_for_Adenoma.mat
+CMOST13_Screening_90perc_noCa_for_Adenoma.mat
+Results/CMOST13_Screening_90perc_for_Adenoma_Results.mat
+Results/CMOST13_Screening_90perc_for_Adenoma.zip
