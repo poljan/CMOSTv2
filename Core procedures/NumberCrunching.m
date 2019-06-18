@@ -1650,11 +1650,8 @@ end
         
         if any(cancersToAccount) %if there are cancers to be accounted for
             
-            %variable for temporary calculations
-            SubCost       = zeros(1, yearsToSimulate*numPeriods);
-            SubCostFut    = zeros(1, yearsToSimulate*numPeriods);
             
-            NcancersToAccount = sum(cancersToAccount); %how many cancers to account fot
+            NcancersToAccount = sum(cancersToAccount); %how many cancers to account for
             Start = Detected.CancerYear(cancersToAccount); %time when the cancer was detected
             IDsToAccount = Detected.SubjectID(cancersToAccount); %IDs of patients
             Stage = Detected.Cancer(cancersToAccount) - 6; %stage of the cancers that will be accounted for
@@ -1662,6 +1659,10 @@ end
             
             for ii = 1:NcancersToAccount %go through each cancer
                 
+                %variable for temporary calculations
+                SubCost       = zeros(1, yearsToSimulate*numPeriods);
+                SubCostFut    = zeros(1, yearsToSimulate*numPeriods);
+            
                 %first: insert the continous costs from cancer diagnosis
                 %till min(death moment, 5 years since diagnosis)
                 %stepCounter is the current moment, 5*numPeriods is 5 years
@@ -1699,10 +1700,9 @@ end
                     end
                 end
                 
-            end
-            
-            Money.Treatment(:,IDsToAccount(ii)) = Money.Treatment(:,IDsToAccount(ii)) + sum(reshape(SubCost,numPeriods,[]))';
-            Money.FutureTreatment(:,IDsToAccount(ii)) = Money.FutureTreatment(:,IDsToAccount(ii)) + sum(reshape(SubCostFut,numPeriods,[]))';
+                Money.Treatment(:,IDsToAccount(ii)) = Money.Treatment(:,IDsToAccount(ii)) + sum(reshape(SubCost,numPeriods,[]))';
+                Money.FutureTreatment(:,IDsToAccount(ii)) = Money.FutureTreatment(:,IDsToAccount(ii)) + sum(reshape(SubCostFut,numPeriods,[]))';
+            end 
             
         end
     end
